@@ -1,23 +1,25 @@
-name: The name of your action here
-description: Provide a description here
-author: Your name or organization here
+name: 'Pterodactyl Backup Manager'
+description: 'Creates a backup on Pterodactyl panel with automatic rotation'
+author: MAXOUXAX
 
-# Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
-  icon: heart
-  color: red
+  icon: save
+  color: blue
 
-# Define your inputs here.
 inputs:
-  milliseconds:
-    description: Your input description here
+  panel-url:
     required: true
-    default: '1000'
+    description: 'Pterodactyl panel URL'
+  server-id:
+    required: true
+    description: 'Server ID to backup'
+  api-key:
+    required: true
+    description: 'Pterodactyl API key'
 
-# Define your outputs here.
 outputs:
-  time:
-    description: Your output description here
+  backup-uuid:
+    description: 'UUID of the created backup'
 
 runs:
   using: node20

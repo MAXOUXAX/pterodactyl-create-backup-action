@@ -1,27 +1,31 @@
 import * as core from '@actions/core'
-import { wait } from './wait.js'
+import { PterodactylAPI } from './pterodactyl-api.js'
+import { BackupManager } from './backup-manager.js'
 
-/**
- * The main function for the action.
- *
- * @returns Resolves when the action is complete.
- */
 export async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
+    const panelUrl = core.getInput('panel-url', { required: true })
+    const serverId = core.getInput('server-id', { required: true })
+    const apiKey = core.getInput('api-key', { required: true })
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    const api = new PterodactylAPI(panelUrl, apiKey)
+    const manager = new BackupManager(api)
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    core.info('Creating backup...')
+    const result = await manager.createBackupWithRotation(serverId)
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+    if (result.status !== 200) {
+      throw new Error(`Failed to create backup: ${JSON.stringify(result.data)}`)
+    }
+
+    const backupId = result.data.attributes.uuid
+    core.info(`Backup created with UUID: ${backupId}`)
+
+    core.info('Waiting for backup completion...')
+    await manager.waitForBackupCompletion(serverId, backupId)
+
+    core.setOutput('backup-uuid', backupId)
   } catch (error) {
-    // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message)
   }
 }
