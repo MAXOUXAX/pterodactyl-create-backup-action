@@ -49,9 +49,13 @@ export class BackupManager {
 
     while (tries < maxRetries) {
       const status = await this.api.getBackupStatus(serverId, backupId)
+      console.debug(`Backup status: ${JSON.stringify(status)}`)
+
       if (status.attributes.completed_at) {
         return status
       }
+
+      console.debug(`Attempt ${tries + 1} of ${maxRetries}`)
 
       tries++
       await new Promise((resolve) => setTimeout(resolve, retryInterval))
