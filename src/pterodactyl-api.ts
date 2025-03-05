@@ -71,6 +71,7 @@ export class PterodactylAPI {
         }
       }
     )
-    return ((await response.json()) as { data: Backup }).data
+
+    return (await response.json()) as Backup
   }
 }
