@@ -15,6 +15,8 @@ backups are always up-to-date and old backups are rotated out to save space.
 - `panel-url` (required): The URL of the Pterodactyl panel.
 - `server-id` (required): The ID of the server to backup.
 - `api-key` (required): The Pterodactyl API key.
+- `headers` (optional): Extra headers as a JSON object or as lines formatted
+  like `Header: Value`.
 
 ## 📤 Outputs
 
@@ -45,6 +47,16 @@ jobs:
           panel-url: ${{ secrets.PANEL_URL }}
           server-id: ${{ secrets.SERVER_ID }}
           api-key: ${{ secrets.API_KEY }}
+
+      - name: Create Pterodactyl Backup (Cloudflare Access)
+        uses: maxouxax/pterodactyl-create-backup-action@v1
+        with:
+          panel-url: ${{ secrets.PANEL_URL }}
+          server-id: ${{ secrets.SERVER_ID }}
+          api-key: ${{ secrets.API_KEY }}
+          headers: |
+            CF-Access-Client-Id: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+            CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
 ```
 
 ## 📝 Notes

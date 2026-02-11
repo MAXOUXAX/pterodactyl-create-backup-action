@@ -16,6 +16,9 @@ inputs:
   api-key:
     required: true
     description: 'Pterodactyl API key'
+  headers:
+    required: false
+    description: 'Extra headers (JSON object or "Header: Value" lines)'
 
 outputs:
   backup-uuid:

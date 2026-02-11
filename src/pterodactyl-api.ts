@@ -15,10 +15,16 @@ export interface Backup {
 export class PterodactylAPI {
   private readonly baseUrl: string
   private readonly apiKey: string
+  private readonly extraHeaders: Record<string, string>
 
-  constructor(panelUrl: string, apiKey: string) {
+  constructor(
+    panelUrl: string,
+    apiKey: string,
+    extraHeaders: Record<string, string> = {}
+  ) {
     this.baseUrl = panelUrl.replace(/\/$/, '')
     this.apiKey = apiKey
+    this.extraHeaders = extraHeaders
   }
 
   async listBackups(serverId: string): Promise<{ data: Backup[] }> {
@@ -27,7 +33,8 @@ export class PterodactylAPI {
       {
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
-          Accept: 'application/json'
+          Accept: 'application/json',
+          ...this.extraHeaders
         }
       }
     )
@@ -41,7 +48,8 @@ export class PterodactylAPI {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
-          Accept: 'application/json'
+          Accept: 'application/json',
+          ...this.extraHeaders
         }
       }
     )
@@ -55,7 +63,8 @@ export class PterodactylAPI {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
-          Accept: 'application/json'
+          Accept: 'application/json',
+          ...this.extraHeaders
         }
       }
     )
@@ -67,7 +76,8 @@ export class PterodactylAPI {
       {
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
-          Accept: 'application/json'
+          Accept: 'application/json',
+          ...this.extraHeaders
         }
       }
     )
