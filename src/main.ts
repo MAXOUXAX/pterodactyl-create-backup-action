@@ -66,7 +66,7 @@ export async function run(): Promise<void> {
     core.info('Creating backup...')
     const result = await manager.createBackupWithRotation(serverId)
 
-    if (result.status !== 200) {
+    if (result.status < 200 || result.status >= 300) {
       throw new Error(`Failed to create backup: ${JSON.stringify(result.data)}`)
     }
 

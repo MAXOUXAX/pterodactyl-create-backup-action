@@ -4,7 +4,7 @@ export declare class BackupManager {
     constructor(api: PterodactylAPI);
     createBackupWithRotation(serverId: string): Promise<{
         status: number;
-        data: Backup;
+        data: unknown;
     }>;
     /**
      * Waits for a backup to complete by polling its status at regular intervals

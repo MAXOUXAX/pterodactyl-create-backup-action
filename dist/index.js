@@ -34476,18 +34476,63 @@ class PterodactylAPI {
         this.apiKey = apiKey;
         this.extraHeaders = extraHeaders;
     }
+    async parseResponse(response) {
+        const contentType = response.headers.get('content-type') ?? '';
+        const text = await response.text();
+        if (contentType.includes('application/json')) {
+            try {
+                return {
+                    data: JSON.parse(text),
+                    contentType
+                };
+            }
+            catch (error) {
+                return {
+                    data: { parseError: error.message },
+                    rawText: text,
+                    contentType
+                };
+            }
+        }
+        return {
+            data: text ? { rawText: text } : {},
+            rawText: text,
+            contentType
+        };
+    }
+    logResponseDebug(method, url, response, contentType, rawText) {
+        const headerKeys = Object.keys(this.extraHeaders);
+        coreExports.debug(`${method} ${url} -> ${response.status} ${response.statusText} (content-type: ${contentType || 'unknown'}, extra headers: ${headerKeys.join(', ') || 'none'})`);
+        if (rawText && !contentType.includes('application/json')) {
+            const snippet = rawText.slice(0, 500).replace(/\s+/g, ' ');
+            coreExports.debug(`Non-JSON response snippet: ${snippet}`);
+        }
+    }
+    formatResponseError(method, url, response, contentType, rawText) {
+        const snippet = rawText
+            ? rawText.slice(0, 500).replace(/\s+/g, ' ')
+            : 'no body';
+        return `${method} ${url} failed with status ${response.status} ${response.statusText} (content-type: ${contentType || 'unknown'}). Response: ${snippet}`;
+    }
     async listBackups(serverId) {
-        const response = await fetch(`${this.baseUrl}/api/client/servers/${serverId}/backups`, {
+        const url = `${this.baseUrl}/api/client/servers/${serverId}/backups`;
+        const response = await fetch(url, {
             headers: {
                 Authorization: `Bearer ${this.apiKey}`,
                 Accept: 'application/json',
                 ...this.extraHeaders
             }
         });
-        return (await response.json());
+        const parsed = await this.parseResponse(response);
+        this.logResponseDebug('GET', url, response, parsed.contentType, parsed.rawText);
+        if (!response.ok) {
+            throw new Error(this.formatResponseError('GET', url, response, parsed.contentType, parsed.rawText));
+        }
+        return parsed.data;
     }
     async createBackup(serverId) {
-        const response = await fetch(`${this.baseUrl}/api/client/servers/${serverId}/backups`, {
+        const url = `${this.baseUrl}/api/client/servers/${serverId}/backups`;
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${this.apiKey}`,
@@ -34495,10 +34540,13 @@ class PterodactylAPI {
                 ...this.extraHeaders
             }
         });
-        return { status: response.status, data: (await response.json()) };
+        const parsed = await this.parseResponse(response);
+        this.logResponseDebug('POST', url, response, parsed.contentType, parsed.rawText);
+        return { status: response.status, data: parsed.data };
     }
     async deleteBackup(serverId, backupId) {
-        await fetch(`${this.baseUrl}/api/client/servers/${serverId}/backups/${backupId}`, {
+        const url = `${this.baseUrl}/api/client/servers/${serverId}/backups/${backupId}`;
+        const response = await fetch(url, {
             method: 'DELETE',
             headers: {
                 Authorization: `Bearer ${this.apiKey}`,
@@ -34506,16 +34554,27 @@ class PterodactylAPI {
                 ...this.extraHeaders
             }
         });
+        const parsed = await this.parseResponse(response);
+        this.logResponseDebug('DELETE', url, response, parsed.contentType, parsed.rawText);
+        if (!response.ok) {
+            throw new Error(this.formatResponseError('DELETE', url, response, parsed.contentType, parsed.rawText));
+        }
     }
     async getBackupStatus(serverId, backupId) {
-        const response = await fetch(`${this.baseUrl}/api/client/servers/${serverId}/backups/${backupId}`, {
+        const url = `${this.baseUrl}/api/client/servers/${serverId}/backups/${backupId}`;
+        const response = await fetch(url, {
             headers: {
                 Authorization: `Bearer ${this.apiKey}`,
                 Accept: 'application/json',
                 ...this.extraHeaders
             }
         });
-        return (await response.json());
+        const parsed = await this.parseResponse(response);
+        this.logResponseDebug('GET', url, response, parsed.contentType, parsed.rawText);
+        if (!response.ok) {
+            throw new Error(this.formatResponseError('GET', url, response, parsed.contentType, parsed.rawText));
+        }
+        return parsed.data;
     }
 }
 
@@ -34623,7 +34682,7 @@ async function run() {
         const manager = new BackupManager(api);
         coreExports.info('Creating backup...');
         const result = await manager.createBackupWithRotation(serverId);
-        if (result.status !== 200) {
+        if (result.status < 200 || result.status >= 300) {
             throw new Error(`Failed to create backup: ${JSON.stringify(result.data)}`);
         }
         const backupId = result.data.attributes.uuid;
