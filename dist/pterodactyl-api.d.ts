@@ -12,7 +12,8 @@ export interface Backup {
 export declare class PterodactylAPI {
     private readonly baseUrl;
     private readonly apiKey;
-    constructor(panelUrl: string, apiKey: string);
+    private readonly extraHeaders;
+    constructor(panelUrl: string, apiKey: string, extraHeaders?: Record<string, string>);
     listBackups(serverId: string): Promise<{
         data: Backup[];
     }>;

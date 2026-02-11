@@ -34470,15 +34470,18 @@ function fixResponseChunkedTransferBadEnding(request, errorCallback) {
 class PterodactylAPI {
     baseUrl;
     apiKey;
-    constructor(panelUrl, apiKey) {
+    extraHeaders;
+    constructor(panelUrl, apiKey, extraHeaders = {}) {
         this.baseUrl = panelUrl.replace(/\/$/, '');
         this.apiKey = apiKey;
+        this.extraHeaders = extraHeaders;
     }
     async listBackups(serverId) {
         const response = await fetch(`${this.baseUrl}/api/client/servers/${serverId}/backups`, {
             headers: {
                 Authorization: `Bearer ${this.apiKey}`,
-                Accept: 'application/json'
+                Accept: 'application/json',
+                ...this.extraHeaders
             }
         });
         return (await response.json());
@@ -34488,7 +34491,8 @@ class PterodactylAPI {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${this.apiKey}`,
-                Accept: 'application/json'
+                Accept: 'application/json',
+                ...this.extraHeaders
             }
         });
         return { status: response.status, data: (await response.json()) };
@@ -34498,7 +34502,8 @@ class PterodactylAPI {
             method: 'DELETE',
             headers: {
                 Authorization: `Bearer ${this.apiKey}`,
-                Accept: 'application/json'
+                Accept: 'application/json',
+                ...this.extraHeaders
             }
         });
     }
@@ -34506,7 +34511,8 @@ class PterodactylAPI {
         const response = await fetch(`${this.baseUrl}/api/client/servers/${serverId}/backups/${backupId}`, {
             headers: {
                 Authorization: `Bearer ${this.apiKey}`,
-                Accept: 'application/json'
+                Accept: 'application/json',
+                ...this.extraHeaders
             }
         });
         return (await response.json());
@@ -34576,12 +34582,44 @@ class BackupManager {
     }
 }
 
+function parseExtraHeaders(rawHeaders) {
+    const trimmed = rawHeaders.trim();
+    if (!trimmed)
+        return {};
+    if (trimmed.startsWith('{')) {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            return Object.fromEntries(Object.entries(parsed).map(([key, value]) => [key, String(value)]));
+        }
+        throw new Error('headers input must be a JSON object when using JSON format');
+    }
+    const separator = trimmed.includes('\n') || trimmed.includes('\r') ? /\r?\n/ : /\s*,\s*/;
+    const lines = trimmed.split(separator);
+    const headers = {};
+    for (const line of lines) {
+        if (!line.trim())
+            continue;
+        const delimiterIndex = line.indexOf(':') >= 0 ? line.indexOf(':') : line.indexOf('=');
+        if (delimiterIndex === -1) {
+            throw new Error(`Invalid headers input line "${line}". Use "Header: Value" or JSON object format.`);
+        }
+        const key = line.slice(0, delimiterIndex).trim();
+        const value = line.slice(delimiterIndex + 1).trim();
+        if (!key) {
+            throw new Error(`Invalid headers input line "${line}". Header name cannot be empty.`);
+        }
+        headers[key] = value;
+    }
+    return headers;
+}
 async function run() {
     try {
         const panelUrl = coreExports.getInput('panel-url', { required: true });
         const serverId = coreExports.getInput('server-id', { required: true });
         const apiKey = coreExports.getInput('api-key', { required: true });
-        const api = new PterodactylAPI(panelUrl, apiKey);
+        const rawHeaders = coreExports.getInput('headers');
+        const extraHeaders = parseExtraHeaders(rawHeaders);
+        const api = new PterodactylAPI(panelUrl, apiKey, extraHeaders);
         const manager = new BackupManager(api);
         coreExports.info('Creating backup...');
         const result = await manager.createBackupWithRotation(serverId);
